@@ -1,0 +1,433 @@
+Automação N8N Compras
+
+
+User prompt: Atue como um especialista em N8N. Crie uma automação para registrar itens de compras de casa mensalmente. Onde posso inserir e deletar os itens que são ou não necessários todos os meses. Itens como de limpeza, alimentos perecíveis e não perecíveis, carnes, embutidos, ovos e manteigas. O essencial para uma família com três pessoas, sendo 2 adultos e uma criança.  As compras serão realizadas a partir do dia 8 de cada mês. Público: Família Ferramentas envolvidas: Google Forms, Google Sheets e Gmail. Fluxo: Receber uma lista, salvar os dados na planilha e enviar um e-mail de confirmação. Regras: Ignorar registros sem e-mail válido. Explique quais nós do N8N devem ser utilizados e a lógica de funcionamento do workflow. 
+Response: Para estruturar essa automação no N8N com integração ao Google Forms, Google Sheets e Gmail, o fluxo deve escutar novas respostas do formulário, validar a presença de um e-mail válido, salvar a lista de compras na planilha e enviar uma mensagem de confirmação para quem fez a solicitação.
+Estrutura dos Nós e Lógica do Workflow
+O fluxo será composto por 5 nós principais conectando a entrada, a validação, o armazenamento e a notificação.
+[Google Forms Trigger] ──> [Filter / Switch] ──> [Google Sheets] ──> [Gmail]
+                                   │
+                           (E-mail inválido)
+                                   └─> [Stop / Skip]
+
+
+Detalhamento dos Nós e Configuração
+1. Google Forms Trigger (Gatilho)
+Função: Dispara o workflow automaticamente sempre que a família preencher o formulário de compras.
+Configuração:
+Conecte sua conta do Google.
+Selecione o formulário criado para o controle das compras mensais.
+O nó extrairá campos como: Nome, E-mail, Data, Categorias Escolhidas e Lista de Itens.
+2. Filter (Filtro e Regra de Negócio)
+Função: Garante o cumprimento da regra de ignorar registros sem e-mail válido.
+Configuração:
+Condição: {{ $json.email }}
+Operador: Is Not Empty / Matches Regex (para validação do formato de e-mail).
+Regex recomendado: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+Resultado: Se a validação for verdadeira, segue para o nó do Google Sheets. Se for falsa, a execução é encerrada sem enviar notificações.
+3. Google Sheets (Armazenamento dos Dados)
+Função: Insere os novos itens e permite a atualização manual dos produtos necessários para a família de 3 pessoas.
+Configuração:
+Resource: Spreadsheet
+Operation: Append Row (Adicionar Linha)
+Spreadsheet: Selecione a sua planilha de Controle de Compras Mensais.
+Mapping: Mapeie os campos do formulário para as colunas da planilha:
+Data de Registro ➔ {{ $json.timestamp }}
+Responsável ➔ {{ $json.nome }}
+E-mail ➔ {{ $json.email }}
+Limpeza ➔ {{ $json.limpeza }}
+Alimentos Não Perecíveis ➔ {{ $json.nao_pereciveis }}
+Perecíveis e Laticínios ➔ {{ $json.pereciveis }}
+Carnes e Embutidos ➔ {{ $json.carnes }}
+Observações / Extras ➔ {{ $json.observacoes }}
+4. Gmail (Envio do E-mail de Confirmação)
+Função: Envia um resumo da lista confirmada para o responsável pelas compras a partir do dia 8 de cada mês.
+Configuração:
+Resource: Message
+Operation: Send
+To: {{ $json.email }}
+Subject: Confirmação de Lista de Compras Mensal - Família
+Body (HTML):
+<p>Olá, <strong>{{ $json.nome }}</strong>!</p>
+<p>Sua lista de compras para o ciclo a partir do dia 08 foi registrada com sucesso na planilha de controle.</p>
+
+<h3>Resumo dos Itens Solicitados:</h3>
+<ul>
+  <li><strong>Higiene e Limpeza:</strong> {{ $json.limpeza }}</li>
+  <li><strong>Alimentos Não Perecíveis:</strong> {{ $json.nao_pereciveis }}</li>
+  <li><strong>Perecíveis, Ovos e Manteigas:</strong> {{ $json.pereciveis }}</li>
+  <li><strong>Carnes e Embutidos:</strong> {{ $json.carnes }}</li>
+</ul>
+
+<p>Acesse a planilha compartilhada caso precise adicionar ou remover algum item antes do dia das compras.</p>
+
+
+Estrutura Recomendada para o Google Forms & Sheets
+Para facilitar a gestão dinâmica dos itens (inserir e deletar o que for necessário mês a mês):
+Google Forms:
+Crie seções ou caixas de seleção (Checkboxes) com os itens essenciais pré-definidos para 2 adultos e 1 criança (ex: 30 ovos, 2kg de manteiga, arroz, feijão, itens de higiene infantil, carnes).
+Adicione um campo de texto aberto para Novos Itens / Remover da Lista.
+Google Sheets (Gerenciamento Contínuo):
+Mantenha uma aba "Histórico de Compras" (onde o N8N insere as respostas do formulário).
+Mantenha uma aba "Itens Base Essenciais", onde você pode alterar a lista padrão mês a mês sem precisar recriar o formulário.
+
+User prompt: Monte a estrutura ideal de colunas e abas para a planilha do Google Sheets focada no consumo de 2 adultos e 1 criança.
+Response: Aqui está a estrutura ideal para organizar a planilha no Google Sheets, planejada para suprir o consumo mensal de uma família com 2 adultos e 1 criança e integrar perfeitamente com a automação do N8N.
+Estrutura de Abas da Planilha
+Para manter o controle de histórico e a facilidade de edição mensal sem quebrar o formulário, divida a planilha em 3 abas principais:
+[Aba 1: Histórico de Respostas] ──> [Aba 2: Lista Base Essencial] ──> [Aba 3: Resumo do Mês (Dashboard)]
+
+
+Aba 1: Histórico (N8N)
+Esta é a aba onde o N8N insere automaticamente os dados do Google Forms. Não edite os cabeçalhos dessa aba após configurar o workflow.
+
+Coluna
+Nome do Cabeçalho
+Descrição / Conteúdo
+A
+Data/Hora Registro
+Data e hora em que o formulário foi enviado (Timestamp)
+B
+Responsável
+Nome de quem fez o preenchimento
+C
+E-mail
+E-mail de quem solicitou (usado na validação e envio)
+D
+Higiene e Limpeza
+Lista de itens de limpeza selecionados
+E
+Não Perecíveis
+Alimentos secos e mantimentos gerais
+F
+Perecíveis e Laticínios
+Leite, ovos, manteigas, iogurtes, frutas e verduras
+G
+Carnes e Embutidos
+Cortes de carnes, frango, peixe e embutidos
+H
+Observações / Extras
+Itens adicionais fora do padrão ou solicitações pontuais
+
+Aba 2: Lista Base Essencial
+Nesta aba fica cadastrado o consumo estimado da família (2 adultos + 1 criança). Aqui você pode inserir ou deletar itens mensalmente sem alterar a automação.
+Sugestão de Colunas:
+Categoria
+Item
+Quantidade Recomendada (Mês)
+Unidade de Medida
+Status (Essencial / Opcional)
+Exemplo de Itens Sugeridos por Categoria (2 Adultos + 1 Criança):
+
+Categoria
+Item
+Qtd. Recomendada
+Unidade
+Higiene e Limpeza
+Sabão em pó / líquido
+3 a 5
+kg / L
+
+
+Amaciante
+2
+Litros
+
+
+Detergente
+6
+Unidades
+
+
+Papel higiênico
+24
+Rolos
+
+
+Fraldas / Itens infantis
+Conforme a idade
+Pacote
+
+
+Sabonete / Gel de banho
+6
+Unidades
+
+
+Creme dental (Adulto + Infantil)
+4
+Tubos
+Não Perecíveis
+Arroz
+5
+kg
+
+
+Feijão
+3 a 4
+kg
+
+
+Óleo de cozinha / Azeite
+2 / 1
+Frascos
+
+
+Açúcar / Sal
+2 / 1
+kg
+
+
+Café
+500g a 1
+kg
+
+
+Macarrão / Molho de tomate
+3 / 6
+Pacotes / Sachês
+
+
+Lanches infantis (Biscoitos, aveia, etc.)
+Variado
+Pacotes
+Perecíveis e Laticínios
+Ovos
+60 (2 cartelas)
+Unidades
+
+
+Manteiga
+2
+Potes (200g)
+
+
+Leite (Integral / Infantil)
+12 a 20
+Litros
+
+
+Queijo / Requeijão
+1kg / 2
+kg / Potes
+
+
+Frutas (Banana, maçã, mamão)
+Semanal
+kg
+Carnes e Embutidos
+Carne moída
+2 a 3
+kg
+
+
+Peito / Coxa de Frango
+4 a 5
+kg
+
+
+Carne bovina para panela / bife
+3 a 4
+kg
+
+
+Filet de peixe
+1 a 2
+kg
+
+
+Presunto / Embutidos
+1
+kg
+
+Aba 3: Controle de Compras Mês Atual
+Aba opcional para usar durante as compras no supermercado (a partir do dia 8).
+
+Coluna
+Nome
+Descrição
+A
+Item
+Nome do produto
+B
+Quantidade Solicitada
+Vindo da resposta do formulário
+C
+Comprado?
+Caixa de seleção (Checkbox)
+D
+Valor Estimado
+Preço médio do item
+E
+Valor Real
+Preço pago no mercado
+
+
+User prompt: Gere o código JSON do workflow do N8N pronto para importar com os nós de Google Forms, Filter, Google Sheets e Gmail.
+Response: {
+  "name": "Controle de Compras Mensais - Família",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "formId": "SEU_FORM_ID_AQUI"
+      },
+      "type": "n8n-nodes-base.googleFormsTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+      "name": "Google Forms Trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "email_validation",
+              "leftValue": "={{ $json.email }}",
+              "rightValue": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "id": "2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e",
+      "name": "Filter - Validar E-mail"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "SEU_SPREADSHEET_ID_AQUI",
+          "mode": "list",
+          "cachedResultName": "Controle de Compras Mensais"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Histórico (N8N)",
+          "mode": "list",
+          "cachedResultName": "Histórico (N8N)"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Data/Hora Registro": "={{ $json.timestamp }}",
+            "Responsável": "={{ $json.nome }}",
+            "E-mail": "={{ $json.email }}",
+            "Higiene e Limpeza": "={{ $json.limpeza }}",
+            "Não Perecíveis": "={{ $json.nao_pereciveis }}",
+            "Perecíveis e Laticínios": "={{ $json.pereciveis }}",
+            "Carnes e Embutidos": "={{ $json.carnes }}",
+            "Observações / Extras": "={{ $json.observacoes }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        700,
+        300
+      ],
+      "id": "3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f",
+      "name": "Google Sheets - Salvar Registro"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json[\"E-mail\"] }}",
+        "subject": "🛒 Confirmação de Lista de Compras Mensal - Família",
+        "message": "=<p>Olá, <strong>{{ $json[\"Responsável\"] }}</strong>!</p>\n<p>Sua lista de compras para o ciclo a partir do dia 08 foi registrada com sucesso na planilha de controle.</p>\n\n<h3>Resumo dos Itens Solicitados:</h3>\n<ul>\n  <li><strong>Higiene e Limpeza:</strong> {{ $json[\"Higiene e Limpeza\"] || 'Nenhum item selecionado' }}</li>\n  <li><strong>Alimentos Não Perecíveis:</strong> {{ $json[\"Não Perecíveis\"] || 'Nenhum item selecionado' }}</li>\n  <li><strong>Perecíveis, Ovos e Manteigas:</strong> {{ $json[\"Perecíveis e Laticínios\"] || 'Nenhum item selecionado' }}</li>\n  <li><strong>Carnes e Embutidos:</strong> {{ $json[\"Carnes e Embutidos\"] || 'Nenhum item selecionado' }}</li>\n  <li><strong>Observações / Extras:</strong> {{ $json[\"Observações / Extras\"] || 'Nenhuma' }}</li>\n</ul>\n\n<p>Acesse a planilha compartilhada caso precise ajustar a lista antes do dia das compras.</p>",
+        "options": {
+          "appendAttaching": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        920,
+        300
+      ],
+      "id": "4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f9a",
+      "name": "Gmail - Enviar Confirmação"
+    }
+  ],
+  "connections": {
+    "Google Forms Trigger": {
+      "main": [
+        [
+          {
+            "node": "Filter - Validar E-mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter - Validar E-mail": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Salvar Registro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Salvar Registro": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Enviar Confirmação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+
+
+Instruções para Importar e Configurar no N8N:
+Importar o JSON:
+Abra a interface do seu N8N.
+Vá em Workflows ➔ Create Workflow.
+No menu do canto superior direito (três pontos ...), clique em Import from JSON e cole o código acima.
+Ajustar Credenciais e IDs:
+Google Forms Trigger: Selecione sua conta cadastrada no N8N e troque SEU_FORM_ID_AQUI pelo ID do seu formulário no Google Forms.
+Google Sheets: Selecione a credencial do Google e altere SEU_SPREADSHEET_ID_AQUI para o ID da sua planilha.
+Gmail: Adicione sua credencial OAuth2 do Gmail/Google Workspace.
+Validação de Nomes de Campos:
+Certifique-se de que as variáveis do tipo {{ $json.email }}, {{ $json.nome }}, etc., coincidem exatamente com o título das perguntas criadas no seu Google Forms.
+
